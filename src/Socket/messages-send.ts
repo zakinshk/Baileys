@@ -32,7 +32,23 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		groupMetadata,
 		groupToggleEphemeral,
 	} = sock
+		// MODIFICADO - MATEUS 16-08-2024
+		const patchMessageRequiresBeforeSending = (msg: proto.IMessage, recipientJids: string[]): proto.IMessage => {
+		if (msg?.deviceSentMessage?.message?.listMessage) {
+			msg = JSON.parse(JSON.stringify(msg))
 
+			msg.deviceSentMessage!.message!.listMessage!.listType = proto.Message.ListMessage.ListType.SINGLE_SELECT
+		}
+
+		if (msg?.listMessage) {
+			msg = JSON.parse(JSON.stringify(msg))
+
+			msg.listMessage!.listType = proto.Message.ListMessage.ListType.SINGLE_SELECT
+		}
+
+		return msg;
+	}
+	
 	const userDevicesCache = config.userDevicesCache || new NodeCache({
 		stdTTL: DEFAULT_CACHE_TTLS.USER_DEVICES, // 5 minutes
 		useClones: false
@@ -299,7 +315,9 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 		extraAttrs?: BinaryNode['attrs']
 	) => {
 		const patched = await patchMessageBeforeSending(message, jids)
-		const bytes = encodeWAMessage(patched)
+		//const bytes = encodeWAMessage(patched)  //DESATIVADO 16-08-2024
+		const requiredPatched = patchMessageRequiresBeforeSending(patched, jids) // ADICIONADO 16-08-2024
+		const bytes = encodeWAMessage(requiredPatched)				 // ADICIONADO 16-08/2024
 
 		let shouldIncludeDeviceIdentity = false
 		const nodes = await Promise.all(
@@ -418,10 +436,15 @@ export const makeMessagesSocket = (config: SocketConfig) => {
 						const additionalDevices = await getUSyncDevices(participantsList, !!useUserDevicesCache, false)
 						devices.push(...additionalDevices)
 					}
-
-					const patched = await patchMessageBeforeSending(message, devices.map(d => jidEncode(d.user, isLid ? 'lid' : 's.whatsapp.net', d.device)))
-					const bytes = encodeWAMessage(patched)
-
+					// DESATIVADO 16-08-2024
+					//const patched = await patchMessageBeforeSending(message, devices.map(d => jidEncode(d.user, isLid ? 'lid' : 's.whatsapp.net', d.device)))
+					//const bytes = encodeWAMessage(patched)
+					
+					const jids = devices.map(d => jidEncode(d.user, isLid ? 'lid' : 's.whatsapp.net', d.device))	//ADICIONADO 16-08-2024
+					const patched = await patchMessageBeforeSending(message, jids)					//ADICIONADO 16-08-2024
+					const requiredPatched = patchMessageRequiresBeforeSending(patched, jids)			//ADICIONADO 16-08-2024
+					const bytes = encodeWAMessage(requiredPatched)							//ADICIONADO 16-08-2024
+					
 					const { ciphertext, senderKeyDistributionMessage } = await signalRepository.encryptGroupMessage(
 						{
 							group: destinationJid,
