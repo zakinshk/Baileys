@@ -513,6 +513,79 @@ export const generateWAMessageContent = async(
 		)
 	}
 
+
+
+
+
+
+
+	
+
+		// ADICIONADO 16-08-2024
+
+		if('buttons' in message && !!message.buttons) {
+		const buttonsMessage: proto.Message.IButtonsMessage = {
+			buttons: message.buttons!.map(b => ({ ...b, type: proto.Message.ButtonsMessage.Button.Type.RESPONSE }))
+		}
+		if('text' in message) {
+			buttonsMessage.contentText = message.text
+			buttonsMessage.headerType = ButtonType.EMPTY
+		} else {
+			if('caption' in message) {
+				buttonsMessage.contentText = message.caption
+			}
+			const type = Object.keys(m)[0].replace('Message', '').toUpperCase()
+			buttonsMessage.headerType = ButtonType[type]
+			Object.assign(buttonsMessage, m)
+		}
+		if('footer' in message && !!message.footer) {
+			buttonsMessage.footerText = message.footer
+		}
+		m = { buttonsMessage }
+	} else if('templateButtons' in message && !!message.templateButtons) {
+		const msg: proto.Message.TemplateMessage.IHydratedFourRowTemplate = {
+			hydratedButtons: message.templateButtons
+		}
+		if('text' in message) {
+			msg.hydratedContentText = message.text
+		} else {
+			if('caption' in message) {
+				msg.hydratedContentText = message.caption
+			}
+			Object.assign(msg, m)
+		}
+		if('footer' in message && !!message.footer) {
+			msg.hydratedFooterText = message.footer
+		}
+		m = {
+			templateMessage: {
+				fourRowTemplate: msg,
+				hydratedTemplate: msg
+			}
+		}
+	}
+	if('sections' in message && !!message.sections) {
+		const listMessage: proto.Message.IListMessage = {
+			sections: message.sections,
+			buttonText: message.buttonText,
+			title: message.title,
+			footerText: message.footer,
+			description: message.text,
+			listType: proto.Message.ListMessage.ListType.SINGLE_SELECT
+			listType: message.hasOwnProperty("listType") ? message.listType : proto.Message.ListMessage.ListType.PRODUCT_LIST
+		}
+
+		m = { listMessage }
+	}
+
+	// FIM DO CODIGO ADICIONADO 16-08-2024
+
+
+
+
+
+
+	
 	if('viewOnce' in message && !!message.viewOnce) {
 		m = { viewOnceMessage: { message: m } }
 	}
